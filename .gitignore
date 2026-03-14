@@ -16,4 +16,5 @@
 .cxx
 local.properties
 /webrtc-httpp/target/
+/webrtc-httpp/node_modules/
 
