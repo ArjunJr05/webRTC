@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">WebRTC</string>
+    <string name="hint_signaling_url">WebSocket signaling URL (ws://...)</string>
+    <string name="hint_optional">Optional (room/id)</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="hint_message">Message</string>
+    <string name="send">Send</string>
+    <string name="delete_logs">Delete</string>
+    <string name="logs_title">Logs</string>
+    <string name="status_prefix">Status: %1$s</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="status_connecting">Connecting</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_error">Error</string>
+    <string name="error_signaling_url_required">Enter signaling URL</string>
+    <string name="error_not_connected">Not connected</string>
+    <string name="error_phone_host_hint">For physical phone, use your PC LAN IP (not 10.0.2.2)</string>
+    <string name="default_signaling_url">wss://nonchivalrous-paranoidly-cara.ngrok-free.dev/ws</string>
+</resources>
