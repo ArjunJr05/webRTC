@@ -17,7 +17,6 @@ class MainActivity : AppCompatActivity() {
     private var rtcClient: WebRtcWsClient? = null
 
     private lateinit var etSignalingUrl: EditText
-    private lateinit var etOptional: EditText
     private lateinit var btnConnect: Button
     private lateinit var btnDisconnect: Button
     private lateinit var tvStatus: TextView
@@ -33,7 +32,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         etSignalingUrl = findViewById(R.id.etSignalingUrl)
-        etOptional = findViewById(R.id.etOptional)
         btnConnect = findViewById(R.id.btnConnect)
         btnDisconnect = findViewById(R.id.btnDisconnect)
         tvStatus = findViewById(R.id.tvStatus)
@@ -69,18 +67,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val optional = etOptional.text.toString().trim().takeIf { it.isNotEmpty() }
-
         val client = WebRtcWsClient(
             context = applicationContext,
-            signalingUrl = signalingUrl,
-            optional = optional
+            signalingUrl = signalingUrl
         )
 
         client.onLog = { appendLog(it) }
         client.onSignalingOpen = {
-            setStatus(getString(R.string.status_connected))
-            btnSend.isEnabled = true
             appendLog("[APP] Signaling channel ready")
         }
         client.onOpen = {
@@ -127,16 +120,19 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        client.send(text)
-        appendLog("[YOU] $text")
-        etMessage.text.clear()
+        val sent = client.send(text)
+        if (sent) {
+            appendLog("[YOU] $text")
+            etMessage.text.clear()
+        } else {
+            Toast.makeText(this, "P2P channel is not connected yet", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun setUiConnected(connected: Boolean) {
         btnConnect.isEnabled = !connected
         btnDisconnect.isEnabled = connected
         etSignalingUrl.isEnabled = !connected
-        etOptional.isEnabled = !connected
         btnSend.isEnabled = false
     }
 

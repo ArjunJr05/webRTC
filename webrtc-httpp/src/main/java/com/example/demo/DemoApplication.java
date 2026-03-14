@@ -3,6 +3,8 @@ package com.example.demo;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -67,6 +69,8 @@ class WebSocketConfig implements WebSocketConfigurer {
 @Component
 class SignalingHandler extends TextWebSocketHandler {
 
+    private static final Pattern TYPE_PATTERN = Pattern.compile("\\\"type\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
+
     /** Active WebSocket sessions (max 2 peers). */
     private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
 
@@ -120,17 +124,28 @@ class SignalingHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 
         String payload = message.getPayload();
+        String type = extractType(payload);
 
-        if (payload.contains("\"type\":\"join\"")) {
+        if (type == null || type.isBlank()) {
+            System.out.println("Ignoring invalid signaling payload");
             return;
         }
 
-        if (payload.contains("\"type\":\"offer\"")) {
+        if ("join".equals(type)) {
+            return;
+        }
+
+        if (!"offer".equals(type) && !"answer".equals(type) && !"candidate".equals(type)) {
+            System.out.println("Ignoring unsupported message type: " + type);
+            return;
+        }
+
+        if ("offer".equals(type)) {
             storedOffer = payload;
             System.out.println("Offer stored");
         }
 
-        if (payload.contains("\"type\":\"answer\"")) {
+        if ("answer".equals(type)) {
             storedOffer = null;
             System.out.println("Offer cleared after answer");
         }
@@ -154,5 +169,13 @@ class SignalingHandler extends TextWebSocketHandler {
 
         System.out.println("Disconnected: " + session.getId());
         System.out.println("Total sessions: " + sessions.size());
+    }
+
+    private String extractType(String payload) {
+        Matcher matcher = TYPE_PATTERN.matcher(payload);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 }

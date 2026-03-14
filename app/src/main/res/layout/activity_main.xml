@@ -17,14 +17,6 @@
             android:hint="@string/hint_signaling_url"
             android:inputType="textUri" />
 
-        <EditText
-            android:id="@+id/etOptional"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="@string/hint_optional"
-            android:inputType="text" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

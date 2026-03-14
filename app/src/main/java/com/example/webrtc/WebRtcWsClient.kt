@@ -28,8 +28,7 @@ import java.util.concurrent.TimeUnit
 class WebRtcWsClient(
     context: Context,
     private val signalingUrl: String,
-    rtcConfig: PeerConnection.RTCConfiguration = defaultRtcConfiguration(),
-    private val optional: String? = null
+    rtcConfig: PeerConnection.RTCConfiguration = defaultRtcConfiguration()
 ) {
 
     var onMessage: ((String) -> Unit)? = null
@@ -91,7 +90,8 @@ class WebRtcWsClient(
                             log("[ICE] Peer failed, attempting ICE restart ($iceRestartAttempts/$maxIceRestartAttempts)")
                             createAndSendOffer(iceRestart = true)
                         } else {
-                            log("[ICE] P2P failed. Falling back to signaling relay mode")
+                            log("[ICE] P2P connection failed")
+                            dispatchError(IllegalStateException("Direct P2P connection failed"))
                         }
                     }
 
@@ -172,18 +172,19 @@ class WebRtcWsClient(
         })
     }
 
-    fun send(message: String) {
+    fun send(message: String): Boolean {
         val channel = dataChannel
         if (channel?.state() == DataChannel.State.OPEN) {
             val bytes = message.toByteArray(StandardCharsets.UTF_8)
             channel.send(DataChannel.Buffer(ByteBuffer.wrap(bytes), false))
             log("[DATA] Message sent via DataChannel")
-        } else {
-            val payload = JSONObject().put("text", message)
-            sendSignal("chat", payload, extra = JSONObject().put("text", message))
+            return true
         }
-    }
 
+        log("[DATA] Message not sent: DataChannel is not open")
+        dispatchError(IllegalStateException("P2P channel is not connected yet"))
+        return false
+    }
     fun close() {
         try {
             dataChannel?.close()
@@ -268,21 +269,11 @@ class WebRtcWsClient(
             }
 
             "chat" -> {
-                val payloadText = message.optJSONObject("payload")?.optString("text", "") ?: ""
-                val topLevelText = message.optString("text", "")
-                val text = if (payloadText.isNotBlank()) payloadText else topLevelText
-                if (text.isNotBlank()) {
-                    log("[WS] Relay message received")
-                    mainHandler.post { onMessage?.invoke(text) }
-                }
+                log("[SIGNAL] Ignored non-signaling chat payload")
             }
 
             "" -> {
-                val topLevelText = message.optString("text", "")
-                if (topLevelText.isNotBlank()) {
-                    log("[WS] Relay message received (legacy format)")
-                    mainHandler.post { onMessage?.invoke(topLevelText) }
-                }
+                log("[SIGNAL] Ignored empty signaling message")
             }
 
             else -> {
@@ -383,7 +374,7 @@ class WebRtcWsClient(
                         if (webSocket == null) {
                             dispatchOnClose()
                         } else {
-                            log("[DATA] DataChannel closed, signaling relay still available")
+                            log("[DATA] DataChannel closed")
                         }
                     }
                     else -> Unit
@@ -418,21 +409,11 @@ class WebRtcWsClient(
         }
     }
 
-    private fun sendSignal(type: String, payload: JSONObject? = null, extra: JSONObject? = null) {
+    private fun sendSignal(type: String, payload: JSONObject? = null) {
         val message = JSONObject().put("type", type)
 
         if (payload != null) {
             message.put("payload", payload)
-        }
-
-        if (extra != null) {
-            extra.keys().forEach { key ->
-                message.put(key, extra.get(key))
-            }
-        }
-
-        if (!optional.isNullOrBlank()) {
-            message.put("optional", optional)
         }
 
         val sent = webSocket?.send(message.toString()) == true
